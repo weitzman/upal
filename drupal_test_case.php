@@ -74,6 +74,33 @@ class DrupalUnitTestCase extends DrupalTestCase {
 class DrupalWebTestCase extends DrupalTestCase {
   public function setUp() {
     parent::setUp();
+
+    // Restore virgin files directory.
+    rmdir(DRUPAL_ROOT . 'sites/upal/files');
+    mkdir(DRUPAL_ROOT . 'sites/upal/files');
+    // Restore virgin DB.
+    $db = parse_url(UPAL_DB_URL);
+    $cmd = sprintf('mysql -u%s -p%s -h%s -P%s %s < %s', $db['user'], $db['pass'], $db['host'], $db['port'], $db['path'], dirname(__FILE__) . '/drupal-7.4-standard.sql');
+    $return = exec($cmd);
+
+    if (!defined('DRUPAL_ROOT')) {
+      define('DRUPAL_ROOT', UPAL_ROOT);
+    }
+    require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+
+    // Enable modules for this test.
+    $modules = func_get_args();
+    if (isset($modules[0]) && is_array($modules[0])) {
+      $modules = $modules[0];
+    }
+    if ($modules) {
+      module_enable($modules, TRUE);
+    }
+
+    // Use the test mail class instead of the default mail handler class.
+    variable_set('mail_system', array('default-system' => 'TestingMailSystem'));
+
   }
 }
 
