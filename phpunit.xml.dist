@@ -1,0 +1,20 @@
+<!-- Copy and rename to phpunit.xml. Customize as needed. -->
+<phpunit backupGlobals="false"
+    backupStaticAttributes="false"
+    syntaxCheck="false"
+    bootstrap="drupal_testcase.inc">
+  <php>
+    <!-- These variables may alternatively be set as bash environment variables. -->
+
+    <!--DB User must have create/drop permissions-->
+    <!-- <var name="UPAL_DB_URL" value="mysql://root:@127.0.0.1"/> --
+
+    <!--The URL for the to-be-tested Drupal.-->
+    <!-- <var name="UPAL_WEB_URL" value="http://example.com"/> -->
+
+    <!--Hard code a path to the tested Drupal. Defaults to cwd.-->
+    <!--<var name="UPAL_ROOT" value="/Users/mw/htd/drupal"/>-->
+
+    <includePath>.</includePath>
+  </php>
+</phpunit>
