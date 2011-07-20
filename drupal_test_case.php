@@ -75,17 +75,17 @@ class DrupalWebTestCase extends DrupalTestCase {
   public function setUp() {
     parent::setUp();
 
-    // Restore virgin files directory.
-    rmdir(DRUPAL_ROOT . 'sites/upal/files');
-    mkdir(DRUPAL_ROOT . 'sites/upal/files');
-    // Restore virgin DB.
-    $db = parse_url(UPAL_DB_URL);
-    $cmd = sprintf('mysql -u%s -p%s -h%s -P%s %s < %s', $db['user'], $db['pass'], $db['host'], $db['port'], $db['path'], dirname(__FILE__) . '/drupal-7.4-standard.sql');
-    $return = exec($cmd);
-
     if (!defined('DRUPAL_ROOT')) {
       define('DRUPAL_ROOT', UPAL_ROOT);
     }
+
+    // Restore virgin files directory.
+    @rmdir(DRUPAL_ROOT . 'sites/upal/files');
+    mkdir(DRUPAL_ROOT . 'sites/upal/files', 0777, TRUE);
+    // Restore virgin DB.
+    $cmd = sprintf('mysql -u%s -p%s -h%s -P%s %s < %s', parse_url(UPAL_DB_URL, PHP_URL_USER), parse_url(UPAL_DB_URL, PHP_URL_PASS), parse_url(UPAL_DB_URL, PHP_URL_HOST), parse_url(UPAL_DB_URL, PHP_URL_PORT), parse_url(UPAL_DB_URL, PHP_URL_PATH), dirname(__FILE__) . '/drupal-7.4-standard.sql');
+    $return = exec($cmd);
+
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 

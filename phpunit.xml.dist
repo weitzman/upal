@@ -7,7 +7,7 @@
     <!-- These variables may alternatively be set as bash environment variables. -->
 
     <!--DB User must have create/drop permissions-->
-    <!-- <var name="UPAL_DB_URL" value="mysql://root:@127.0.0.1"/> --
+    <!-- <var name="UPAL_DB_URL" value="mysql://root:@127.0.0.1/upal"/> --
 
     <!--The URL for the to-be-tested Drupal.-->
     <!-- <var name="UPAL_WEB_URL" value="http://example.com"/> -->
