@@ -9,7 +9,6 @@ Usage
 
 Notes
 ----------
-- I have run tests within Netbeans and it works.
 
 [*] Install PHPUnit:
 
