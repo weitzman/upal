@@ -11,7 +11,10 @@
  *     - setUp() only resets DB for mysql. Probably should use Drush and thus
  *       support postgres and sqlite easily.
  *     - Perhaps do a SQL dump at start of suite instead of committing one to Git.
- *     - The sites.php business in setUp() could use more thought.
+ *     - The sites.php business in setUp() could use more thought. Thats how we
+ *       target our sites/upal multi-site during web and direct requests.
+ *     - More sensible defaults in phpunit.xml.dist
+ *     -
  */
 
 /*
@@ -2209,8 +2212,8 @@ class DrupalWebTestCase extends DrupalTestCase {
     $site = DRUPAL_ROOT . '/sites/upal';
 
     // Restore virgin files directory.
-    @rmdir(DRUPAL_ROOT . "$site/files");
-    mkdir(DRUPAL_ROOT . "$site/files", 0777, TRUE);
+    @rmdir("$site/files");
+    mkdir("$site/files", 0777, TRUE);
 
     // Restore virgin DB.
     $db = parse_url(UPAL_DB_URL);
