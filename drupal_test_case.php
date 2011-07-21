@@ -2212,7 +2212,10 @@ class DrupalWebTestCase extends DrupalTestCase {
     $site = DRUPAL_ROOT . '/sites/upal';
 
     // Restore virgin files directory.
-    @rmdir("$site/files");
+    $files_dir = "$site/files";
+    if (file_exists($files_dir)) {
+      exec('rm -rf ' . escapeshellarg($files_dir));
+    }
     mkdir("$site/files", 0777, TRUE);
 
     // Restore virgin DB.
