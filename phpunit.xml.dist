@@ -9,8 +9,10 @@
     <!--DB User must have create/drop permissions-->
     <!-- <var name="UPAL_DB_URL" value="mysql://root:@127.0.0.1:3306/upal"/> -->
 
-    <!--The URL for the to-be-tested Drupal.-->
-    <!-- <var name="UPAL_WEB_URL" value="http://example.com/index.php"/> -->
+    <!--URL for the to-be-tested Drupal. The url *must* end in upal/index.php -->
+    <!-- Uncomment and customize one of the lines below. -->
+    <!-- <var name="UPAL_WEB_URL" value="http://upal/index.php"/> -->
+    <!-- <var name="UPAL_WEB_URL" value="http://example.com/upal/index.php"/> -->
 
     <!--Hard code a path to the to-be-tested Drupal. Defaults to cwd.-->
     <!--<var name="UPAL_ROOT" value="/Users/mw/htd/drupal"/>-->
