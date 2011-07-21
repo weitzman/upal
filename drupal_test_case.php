@@ -9,10 +9,14 @@
  *       anything from an assertion (unlike simpletest).
  *     - Must manually collect list of tests since not all begin with 'test'
  *     - setUp() only resets DB for mysql. Probably should use Drush and thus
- *       support postgres and sqlite easily.
+ *       support postgres and sqlite easily. That buys us auto creation of upal DB
+ *       as well.
  *     - Perhaps do a SQL dump at start of suite instead of committing one to Git.
  *     - More sensible defaults in phpunit.xml.dist
- *     -
+ *     - Better error collection from tested Drupal like simpletest.
+ *     - Some equivalent of verbose() and debug().
+ *     - Split into separate class files and add autoloader for upal.
+ *     - Compare speed versus simpletest.
  */
 
 /*
@@ -2272,14 +2276,14 @@ class DrupalWebTestCase extends DrupalTestCase {
  */
 function upal_init() {
   // We read from globals here because env can be empty and ini did not work in quick test.
-  define('UPAL_DB_URL', getenv('UPAL_DB_URL') ? getenv('UPAL_DB_URL') : (!empty($GLOBALS['UPAL_DB_URL']) ? $GLOBALS['UPAL_DB_URL'] : 'mysql://root:@127.0.0.1'));
+  define('UPAL_DB_URL', getenv('UPAL_DB_URL') ? getenv('UPAL_DB_URL') : (!empty($GLOBALS['UPAL_DB_URL']) ? $GLOBALS['UPAL_DB_URL'] : 'mysql://root:@127.0.0.1/upal'));
 
   // Make sure we use the right Drupal codebase.
   define('UPAL_ROOT', getenv('UPAL_ROOT') ? getenv('UPAL_ROOT') : (isset($GLOBALS['UPAL_ROOT']) ? $GLOBALS['UPAL_ROOT'] : realpath('.')));
   chdir(UPAL_ROOT);
 
   // The URL that browser based tests (ewwwww) should use.
-  define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://127.0.0.1/'));
+  define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal/index.php'));
   $url = parse_url(UPAL_WEB_URL);
   $_SERVER['HTTP_HOST'] = $url['host'];
   $_SERVER['SCRIPT_NAME'] = $url['path'];

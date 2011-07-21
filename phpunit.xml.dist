@@ -10,15 +10,15 @@
     <!-- For now, you must create this database yourself before running tests. -->
     <!-- <var name="UPAL_DB_URL" value="mysql://root:@127.0.0.1:3306/upal"/> -->
 
-    <!--URL for the to-be-tested Drupal. The url *must* end in upal/index.php -->
-    <!-- Uncomment and customize one of the lines below. -->
-    <!-- <var name="UPAL_WEB_URL" value="http://upal/index.php"/> -->
+    <!-- URL for the to-be-tested Drupal. Defaults to http://upal/index.php. -->
+    <!-- The url *must* end in upal/index.php -->
     <!-- <var name="UPAL_WEB_URL" value="http://example.com/upal/index.php"/> -->
 
-    <!--Hard code a path to the to-be-tested Drupal. Defaults to cwd.-->
+    <!--Hard code a fileystem path to the to-be-tested Drupal. Defaults to cwd.-->
     <!--<var name="UPAL_ROOT" value="/Users/mw/htd/drupal"/>-->
 
     <!--Uncomment the line below if your path to drush differs from `which drush`. Use absolute path.-->
+    <!--Not yet used.-->
     <!--<var name="UPAL_DRUSH" value="/Users/mw/bin/drush"/>-->
 
     <includePath>.</includePath>
