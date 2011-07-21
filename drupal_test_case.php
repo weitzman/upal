@@ -3,9 +3,20 @@
 /*
  * @file
  *   Test Framework for Drupal based on PHPUnit.
+ *
+ *   @todo
+ *     - hard coded TRUE at end of drupalLogin() because PHPUnit doesn't return
+ *       anything from an assertion (unlike simpletest).
+ *     - Must manually collect list of tests since not all begin with 'test'
+ *     - setUp() only resets DB for mysql. Probably should use Drush and thus
+ *       support postgres and sqlite easily.
+ *     - Perhaps do a SQL dump at start of suite instead of committing one to Git.
+ *     - The sites.php business in setUp() could use more thought.
  */
 
 /*
+ * @todo: Perhaps move these annotations down to the instance classes and tests.
+ *
  * @runTestsInSeparateProcess
  * @preserveGlobalState disabled
  */
@@ -411,7 +422,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     if (!$message) {
       $message = t('Pattern "@pattern" found', array('@pattern' => $pattern));
     }
-    return $this->assertRegExp($pattern, $this->drupalGetContent(), $message, $group);
+    return $this->assertTrue((bool) preg_match($pattern, $this->drupalGetContent()), $message, $group);
   }
 
   /**
@@ -430,7 +441,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     if (!$message) {
       $message = t('Pattern "@pattern" not found', array('@pattern' => $pattern));
     }
-    return $this->assertNotRegExp($pattern, $this->drupalGetContent(), $message, $group);
+    return $this->assertTrue(!preg_match($pattern, $this->drupalGetContent()), $message, $group);
   }
 
   /**
@@ -900,7 +911,8 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   protected function assertMailPattern($field_name, $regex, $message) {
     $mails = $this->drupalGetMails();
     $mail = end($mails);
-    return $this->assertRegExp($regex, $mail[$field_name], t('Expected text found in @field of email message: "@expected".', array('@field' => $field_name, '@expected' => $regex)));
+    $regex_found = preg_match("/$regex/", $mail[$field_name]);
+    return $this->assertTrue($regex_found, t('Expected text found in @field of email message: "@expected".', array('@field' => $field_name, '@expected' => $regex)));
   }
 
   /**
@@ -1543,7 +1555,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     // the login was successful.
     $pass = $this->assertLink(t('Log out'), 0, t('User %name successfully logged in.', array('%name' => $user->name)), t('User login'));
 
-    if ($pass) {
+    if (1 || $pass) {
       // TODO: declare this var
       $this->loggedInUser = $user;
     }
@@ -2199,22 +2211,34 @@ class DrupalWebTestCase extends DrupalTestCase {
     // Restore virgin files directory.
     @rmdir(DRUPAL_ROOT . "$site/files");
     mkdir(DRUPAL_ROOT . "$site/files", 0777, TRUE);
+
     // Restore virgin DB.
     $db = parse_url(UPAL_DB_URL);
     // TODO: replace with drush sql_query.
-    $cmd = sprintf('mysql -u%s -p%s -h%s -D %s -P%s < %s', parse_url(UPAL_DB_URL, PHP_URL_USER), parse_url(UPAL_DB_URL, PHP_URL_PASS), parse_url(UPAL_DB_URL, PHP_URL_HOST), ltrim(parse_url(UPAL_DB_URL, PHP_URL_PATH), '/'), parse_url(UPAL_DB_URL, PHP_URL_PORT), dirname(__FILE__) . '/drupal-7.4-standard.sql');
+    if (isset($db['user'])) {
+      $parts['u'] = $db['user'];
+    }
+    if (isset($db['pass'])) {
+      $parts['p'] = $db['pass'];
+    }
+    $parts['h'] = $db['host'];
+    if (isset($db['port'])) {
+      $parts['P'] = $db['port'];
+    }
+    $parts['D'] = trim($db['path'], '/');
+    $cmd = 'mysql '. implode(' ', $parts) . dirname(__FILE__) . '/drupal-7.4-standard.sql';
     exec($cmd, $output, $return);
 
     $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
-
     // Write settings.php if needed.
     if (!file_exists("$site/settings.php")) {
       $db_array = array(
         'driver' => $db['scheme'],
         'database' => trim($db['path'], '/'),
         'username' => @$db['user'],
-        'password' => @$db['password'],
+        'password' => @$db['pass'],
         'host' => $db['host'],
+        'port' => @$db['port'],
       );
       $databases = "\$databases['default']['default'] = " . var_export($db_array, TRUE) . ';';
       $data = "<?php\n\n$byline\n$databases\n\n?>";

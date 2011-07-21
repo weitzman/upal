@@ -4,8 +4,9 @@ Usage
 --------
 - Install PHPUnit [*]
 - Optional. Copy phpunit.xml.dist to phpunit.xml and customize if needed.
-- From the drupal root directory that is to be tested, run
+- From the drupal root directory that is to be tested, run lines like:
     `phpunit --configuration /path/to/upal/phpnuit.xml FilterUnitTestCase modules/filter/filter.test`
+    `phpunit --debug --configuration /path/to/upal/phpunit.xml ./modules/blog/blog.test`
 
 Notes
 ----------
