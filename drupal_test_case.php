@@ -12,9 +12,8 @@
  *       support postgres and sqlite easily. That buys us auto creation of upal DB
  *       as well.
  *     - Perhaps do a SQL dump at start of suite instead of committing one to Git.
- *     - More sensible defaults in phpunit.xml.dist
- *     - Better error collection from tested Drupal like simpletest.
- *     - Some equivalent of verbose() and debug().
+ *     - error() could log $caller info.
+ *     - Fix verbose().
  *     - Split into separate class files and add autoloader for upal.
  *     - Compare speed versus simpletest.
  *     - move upal_init() to a class thats called early in the suite.
@@ -199,10 +198,10 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     if ($group == 'User notice') {
       // Since 'User notice' is set by trigger_error() which is used for debug
       // set the message to a status of 'debug'.
-      return $this->assertTrue('debug', $message, 'Debug', $caller);
+      return $this->pass($message, $group);
     }
-
-    return $this->assertTrue('exception', $message, $group, $caller);
+    // @todo Pass along $caller info.
+    return $this->fail('exception: ' . $message, $group);
   }
 
   function assertEqual($expected, $actual, $msg = NULL) {
@@ -1003,8 +1002,9 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   }
 
   function verbose($message) {
-    // TODO
-    // $this->log($message, 'verbose');
+    if (strlen($message) < 500) {
+      // $this->log($message, 'verbose');
+    }
   }
   /**
    * Generates a random string containing letters and numbers.
