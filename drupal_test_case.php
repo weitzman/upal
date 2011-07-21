@@ -6,8 +6,8 @@
  *
  *   @todo
  *     - hard coded TRUE at end of drupalLogin() because PHPUnit doesn't return
- *       anything from an assertion (unlike simpletest).
- *     - Must manually collect list of tests since not all begin with 'test'
+ *       anything from an assertion (unlike simpletest). Even if we fix drupalLogin(),
+ *       we have to fix this to get 100% compatibility with simpletest.
  *     - setUp() only resets DB for mysql. Probably should use Drush and thus
  *       support postgres and sqlite easily. That buys us auto creation of upal DB
  *       as well.
@@ -17,6 +17,7 @@
  *     - Some equivalent of verbose() and debug().
  *     - Split into separate class files and add autoloader for upal.
  *     - Compare speed versus simpletest.
+ *     - move upal_init() to a class thats called early in the suite.
  */
 
 /*
