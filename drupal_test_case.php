@@ -11,8 +11,6 @@
  *     - setUp() only resets DB for mysql. Probably should use Drush and thus
  *       support postgres and sqlite easily.
  *     - Perhaps do a SQL dump at start of suite instead of committing one to Git.
- *     - The sites.php business in setUp() could use more thought. Thats how we
- *       target our sites/upal multi-site during web and direct requests.
  *     - More sensible defaults in phpunit.xml.dist
  *     -
  */
@@ -2214,7 +2212,7 @@ class DrupalWebTestCase extends DrupalTestCase {
     // Restore virgin files directory.
     $files_dir = "$site/files";
     if (file_exists($files_dir)) {
-      exec('rm -rf ' . escapeshellarg($files_dir));
+      exec('rm -rf ' . escapeshellarg($files_dir), $output, $return);
     }
     mkdir("$site/files", 0777, TRUE);
 
@@ -2249,15 +2247,6 @@ class DrupalWebTestCase extends DrupalTestCase {
       $databases = "\$databases['default']['default'] = " . var_export($db_array, TRUE) . ';';
       $data = "<?php\n\n$byline\n$databases\n\n?>";
       file_put_contents("$site/settings.php", $data);
-    }
-
-    // Write sites.php if needed
-    // TODO: use tighter mapping.
-    if (!file_exists(DRUPAL_ROOT . '/sites/sites.php')) {
-      $host = $_SERVER['HTTP_HOST'];
-      $sites = "\$sites['$host'] = 'upal';";
-      $data = "<?php\n\n$byline\n$sites\n\n?>";
-      file_put_contents(DRUPAL_ROOT . '/sites/sites.php', $data);
     }
 
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
