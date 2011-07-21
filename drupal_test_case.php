@@ -2220,17 +2220,17 @@ class DrupalWebTestCase extends DrupalTestCase {
     $db = parse_url(UPAL_DB_URL);
     // TODO: replace with drush sql_query.
     if (isset($db['user'])) {
-      $parts['u'] = $db['user'];
+      $parts[] = '-u' . $db['user'];
     }
     if (isset($db['pass'])) {
-      $parts['p'] = $db['pass'];
+      $parts[] = '-p' . $db['pass'];
     }
-    $parts['h'] = $db['host'];
+    $parts[] = '-h' . $db['host'];
     if (isset($db['port'])) {
-      $parts['P'] = $db['port'];
+      $parts[] = '-P' . $db['port'];
     }
-    $parts['D'] = trim($db['path'], '/');
-    $cmd = 'mysql '. implode(' ', $parts) . dirname(__FILE__) . '/drupal-7.4-standard.sql';
+    $parts[] = '-D' . trim($db['path'], '/');
+    $cmd = 'mysql '. implode(' ', $parts) . ' < ' . dirname(__FILE__) . '/drupal-7.4-standard.sql';
     exec($cmd, $output, $return);
 
     $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
