@@ -11,9 +11,10 @@
  *     - setUp() only resets DB for mysql. Probably should use Drush and thus
  *       support postgres and sqlite easily. That buys us auto creation of upal DB
  *       as well.
- *     - Perhaps do a SQL dump at start of suite instead of committing one to Git.
+ *     - Unlikely: Instead of DB restore, clone as per http://drupal.org/node/666956.
  *     - error() could log $caller info.
  *     - Fix verbose().
+ *     - Fix random test failures.
  *     - Split into separate class files and add autoloader for upal.
  *     - Compare speed versus simpletest.
  *     - move upal_init() to a class thats called early in the suite.
@@ -2220,6 +2221,8 @@ class DrupalWebTestCase extends DrupalTestCase {
       exec('rm -rf ' . escapeshellarg($files_dir), $output, $return);
     }
     mkdir("$site/files", 0777, TRUE);
+    // For some reason I need a chmod() as well.
+    chmod("$site/files", 0777);
 
     // Restore virgin DB.
     $db = parse_url(UPAL_DB_URL);
@@ -2284,11 +2287,28 @@ function upal_init() {
   chdir(UPAL_ROOT);
 
   // The URL that browser based tests (ewwwww) should use.
-  define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal/index.php'));
+  define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal'));
+
+
+  // Set the env vars that Derupal expects. Largely copied from drush.
   $url = parse_url(UPAL_WEB_URL);
+
+  if (array_key_exists('path', $url)) {
+    $_SERVER['PHP_SELF'] = $url['path'] . '/index.php';
+  }
+  else {
+    $_SERVER['PHP_SELF'] = '/index.php';
+  }
+
+  $_SERVER['REQUEST_URI'] = $_SERVER['SCRIPT_NAME'] = $_SERVER['PHP_SELF'];
+  $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+  $_SERVER['REQUEST_METHOD']  = NULL;
+
+  $_SERVER['SERVER_SOFTWARE'] = NULL;
+  $_SERVER['HTTP_USER_AGENT'] = NULL;
+
   $_SERVER['HTTP_HOST'] = $url['host'];
-  $_SERVER['SCRIPT_NAME'] = $url['path'];
-  $_SERVER['REMOTE_ADDR'] = $url['host'];
+  $_SERVER['SERVER_PORT'] = array_key_exists('port', $url) ? $url['port'] : NULL;
 }
 
  // This code is in global scope.
