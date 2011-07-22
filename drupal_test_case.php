@@ -2224,8 +2224,32 @@ class DrupalWebTestCase extends DrupalTestCase {
     // For some reason I need a chmod() as well.
     chmod("$site/files", 0777);
 
-    // Restore virgin DB.
     $db = parse_url(UPAL_DB_URL);
+    $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
+    // Write settings.php if needed. @todo perhaps Drush can do this better.
+    if (!file_exists("$site/settings.php")) {
+      $db_array = array(
+        'driver' => $db['scheme'],
+        'database' => trim($db['path'], '/'),
+        'username' => @$db['user'],
+        'password' => @$db['pass'],
+        'host' => $db['host'],
+        'port' => @$db['port'],
+      );
+      $databases = "\$databases['default']['default'] = " . var_export($db_array, TRUE) . ';';
+      $data = "<?php\n\n$byline\n$databases\n\n?>";
+      file_put_contents("$site/settings.php", $data);
+    }
+
+    // Restore virgin DB.
+    /* @todo
+      -- need more flexible dump to start with.
+      -- pull in UNISH class for calling `drush`
+    */
+    $cmd = sprintf('%s --db-url=%s --quiet eval "drush_sql_empty_db();"', UNISH_DRUSH, UPAL_DB_URL);
+    exec($cmd, $output, $return);
+
+    // Restore virgin DB. Will do in Drush once we get http://drupal.org/node/1226260.
     // TODO: replace with drush sql_query.
     if (isset($db['user'])) {
       $parts[] = '-u' . $db['user'];
@@ -2241,21 +2265,6 @@ class DrupalWebTestCase extends DrupalTestCase {
     $cmd = 'mysql '. implode(' ', $parts) . ' < ' . dirname(__FILE__) . '/drupal-7.4-standard.sql';
     exec($cmd, $output, $return);
 
-    $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
-    // Write settings.php if needed.
-    if (!file_exists("$site/settings.php")) {
-      $db_array = array(
-        'driver' => $db['scheme'],
-        'database' => trim($db['path'], '/'),
-        'username' => @$db['user'],
-        'password' => @$db['pass'],
-        'host' => $db['host'],
-        'port' => @$db['port'],
-      );
-      $databases = "\$databases['default']['default'] = " . var_export($db_array, TRUE) . ';';
-      $data = "<?php\n\n$byline\n$databases\n\n?>";
-      file_put_contents("$site/settings.php", $data);
-    }
 
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
@@ -2279,6 +2288,18 @@ class DrupalWebTestCase extends DrupalTestCase {
  * Initialize our environment at the start of each run (i.e. suite).
  */
 function upal_init() {
+  // UNISH_DRUSH value can come from phpunit.xml or `which drush`.
+  if (!defined('UNISH_DRUSH')) {
+    // Let the UNISH_DRUSH environment variable override if set.
+    $unish_drush = isset($_SERVER['UNISH_DRUSH']) ? $_SERVER['UNISH_DRUSH'] : NULL;
+    $unish_drush = isset($GLOBALS['UNISH_DRUSH']) ? $GLOBALS['UNISH_DRUSH'] : $unish_drush;
+    if (empty($unish_drush)) {
+      // $unish_drush = Drush_TestCase::is_windows() ? exec('for %i in (drush) do @echo.   %~$PATH:i') : trim(`which drush`);
+      $unish_drush = trim(`which drush`);
+    }
+    define('UNISH_DRUSH', $unish_drush);
+  }
+
   // We read from globals here because env can be empty and ini did not work in quick test.
   define('UPAL_DB_URL', getenv('UPAL_DB_URL') ? getenv('UPAL_DB_URL') : (!empty($GLOBALS['UPAL_DB_URL']) ? $GLOBALS['UPAL_DB_URL'] : 'mysql://root:@127.0.0.1/upal'));
 
