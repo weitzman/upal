@@ -5,6 +5,7 @@
  *   Test Framework for Drupal based on PHPUnit.
  *
  *   @todo
+ *     - Simpletest's assertFalse casts to boolean whereas PHPUnit requires boolean. See testSiteWideContact().
  *     - hard coded TRUE at end of drupalLogin() because PHPUnit doesn't return
  *       anything from an assertion (unlike simpletest). Even if we fix drupalLogin(),
  *       we have to fix this to get 100% compatibility with simpletest.
@@ -1718,6 +1719,58 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   }
 
   /**
+   * Creates a custom content type based on default settings.
+   *
+   * @param $settings
+   *   An array of settings to change from the defaults.
+   *   Example: 'type' => 'foo'.
+   * @return
+   *   Created content type.
+   */
+  protected function drupalCreateContentType($settings = array()) {
+    // Find a non-existent random type name.
+    do {
+      $name = strtolower($this->randomName(8));
+    } while (node_type_get_type($name));
+
+    // Populate defaults array.
+    $defaults = array(
+      'type' => $name,
+      'name' => $name,
+      'base' => 'node_content',
+      'description' => '',
+      'help' => '',
+      'title_label' => 'Title',
+      'body_label' => 'Body',
+      'has_title' => 1,
+      'has_body' => 1,
+    );
+    // Imposed values for a custom type.
+    $forced = array(
+      'orig_type' => '',
+      'old_type' => '',
+      'module' => 'node',
+      'custom' => 1,
+      'modified' => 1,
+      'locked' => 0,
+    );
+    $type = $forced + $settings + $defaults;
+    $type = (object) $type;
+
+    $saved_type = node_type_save($type);
+    node_types_rebuild();
+    menu_rebuild();
+    node_add_body_field($type);
+
+    $this->assertEqual($saved_type, SAVED_NEW, t('Created content type %type.', array('%type' => $type->type)));
+
+    // Reset permissions so that permissions for this content type are available.
+    $this->checkPermissions(array(), TRUE);
+
+    return $type;
+  }
+
+  /**
    * Follows a link by name.
    *
    * Will click the first link found with this link text by default, or a
@@ -2295,29 +2348,16 @@ class DrupalWebTestCase extends DrupalTestCase {
     chmod("$site/files", 0777);
 
     $db = parse_url(UPAL_DB_URL);
-    $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
-    // Write settings.php if needed. @todo perhaps Drush can do this better.
-    if (!file_exists("$site/settings.php")) {
-      $db_array = array(
-        'driver' => $db['scheme'],
-        'database' => trim($db['path'], '/'),
-        'username' => @$db['user'],
-        'password' => @$db['pass'],
-        'host' => $db['host'],
-        'port' => @$db['port'],
-      );
-      $databases = "\$databases['default']['default'] = " . var_export($db_array, TRUE) . ';';
-      $data = "<?php\n\n$byline\n$databases\n\n?>";
-      file_put_contents("$site/settings.php", $data);
-    }
 
     // Restore virgin DB.
     /* @todo
       -- need more flexible dump to start with.
       -- pull in UNISH class for calling `drush`
     */
-    $cmd = sprintf('%s --db-url=%s --quiet eval "drush_sql_empty_db();"', UNISH_DRUSH, UPAL_DB_URL);
-    exec($cmd, $output, $return);
+    $cmd = sprintf('%s --db-url=%s --uri=upal eval "drush_sql_empty_db();"', UNISH_DRUSH, UPAL_DB_URL);
+    if (exec($cmd, $output, $return)) {
+      exit('Failed to empty DB.');
+    }
 
     // Restore virgin DB. Will do in Drush once we get http://drupal.org/node/1226260.
     // TODO: replace with drush sql_query.
@@ -2335,6 +2375,22 @@ class DrupalWebTestCase extends DrupalTestCase {
     $cmd = 'mysql '. implode(' ', $parts) . ' < ' . dirname(__FILE__) . '/drupal-7.4-standard.sql';
     exec($cmd, $output, $return);
 
+    $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
+    // Write settings.php if needed. @todo perhaps Drush can do this better.
+    if (!file_exists("$site/settings.php")) {
+      $db_array = array(
+        'driver' => $db['scheme'],
+        'database' => trim($db['path'], '/'),
+        'username' => @$db['user'],
+        'password' => @$db['pass'],
+        'host' => $db['host'],
+        'port' => @$db['port'],
+      );
+      $conf = "\$conf['blocked_ips'] = array();";
+      $databases = "\$databases['default']['default'] = " . var_export($db_array, TRUE) . ';';
+      $data = "<?php\n\n$byline\n$databases\n\n$conf\n\n?>";
+      file_put_contents("$site/settings.php", $data);
+    }
 
     require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
@@ -2400,6 +2456,9 @@ function upal_init() {
 
   $_SERVER['HTTP_HOST'] = $url['host'];
   $_SERVER['SERVER_PORT'] = array_key_exists('port', $url) ? $url['port'] : NULL;
+
+  // TODO: move this or maybe autoload this class.
+  require_once dirname(__FILE__) . '/FullTestSuite.php';
 }
 
  // This code is in global scope.
