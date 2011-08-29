@@ -2456,9 +2456,6 @@ function upal_init() {
 
   $_SERVER['HTTP_HOST'] = $url['host'];
   $_SERVER['SERVER_PORT'] = array_key_exists('port', $url) ? $url['port'] : NULL;
-
-  // TODO: move this or maybe autoload this class.
-  require_once dirname(__FILE__) . '/FullTestSuite.php';
 }
 
  // This code is in global scope.
