@@ -525,7 +525,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
 
     // If value specified then check array for match.
     $found = TRUE;
-    if (isset($value)) {
+    if (!empty($value)) {
       $found = FALSE;
       if ($fields) {
         foreach ($fields as $field) {
@@ -661,7 +661,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    * @return
    *   TRUE on pass, FALSE on fail.
    */
-  protected function assertFieldById($id, $value = '', $message = '') {
+  protected function assertFieldById($id, $value = NULL, $message = '') {
     return $this->assertFieldByXPath($this->constructFieldXpath('id', $id), $value, $message ? $message : t('Found field by id @id', array('@id' => $id)), t('Browser'));
   }
 
