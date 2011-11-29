@@ -2396,7 +2396,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
 
     $put = file_put_contents($filepath, $this->drupalGetContent());
     if ($put === FALSE) $this->error("Unable to dump content to $filepath.");
-    else $this->verbose("Dumped content to $filepath.");
+    else $this->verbose("Dumped content of " . $this->getUrl() . " to $filepath.");
   }
 
 }  // abstract class DrupalTestCase
