@@ -2368,8 +2368,10 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    * crude mechanism to dump current CURL'd html to file system
    * dir set in phpunit.xml as DUMP_DIR. 
    * [tried and removed: create subdir for this test run and file for each dump]
+   *
+   * @param $description optional description of file dump for the logs
    */
-  public function dumpContentToFile() {
+  public function dumpContentToFile($description = '') {
     $dump_dir = isset($GLOBALS['DUMP_DIR']) ? $GLOBALS['DUMP_DIR'] : NULL;
     if (empty($dump_dir) || !file_exists($dump_dir)) {
       $this->error("Missing or invalid DUMP_DIR in " . __FUNCTION__);
@@ -2405,7 +2407,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
 
     $put = file_put_contents($filepath, $this->drupalGetContent());
     if ($put === FALSE) $this->error("Unable to dump content to $filepath.");
-    else $this->verbose("Dumped content of " . $this->getUrl() . " to $filepath.");
+    else $this->verbose("Dumped content of " . $this->getUrl() . " to $filepath." . (empty($description) ? '' : " ($description)") );
   }
 
 
