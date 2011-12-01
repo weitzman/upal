@@ -2,7 +2,7 @@
 <phpunit backupGlobals="false"
     backupStaticAttributes="false"
     syntaxCheck="false"
-    bootstrap="drupal_test_case.php">
+    bootstrap="upal.php">
   <php>
     <!-- These variables may alternatively be set as bash environment variables. -->
 
@@ -15,11 +15,20 @@
     <!-- <var name="UPAL_WEB_URL" value="http://example.com/upal"/> -->
 
     <!--Hard code a fileystem path to the to-be-tested Drupal. Defaults to cwd.-->
-    <!--<var name="UPAL_ROOT" value="/Users/mw/htd/drupal"/>-->
+    <!--<var name="UPAL_ROOT" value="/Users/example/drupal"/>-->
 
     <!--Uncomment the line below if your path to drush differs from `which drush`. Use absolute path.-->
     <!--You currently need 'master' branch of drush after 2011.07.21. Drush 4.6 will be OK - http://drupal.org/node/1105514-->
-    <!--<var name="UNISH_DRUSH" value="/Users/mw/bin/drush"/>-->
+    <!--<var name="UNISH_DRUSH" value="/Users/example/bin/drush"/>-->
+
+
+    <!-- optional HTTP authentication to sandbox -->
+    <var name="UPAL_HTTP_USER" value="user"/>
+    <var name="UPAL_HTTP_PASS" value="pass"/>
+    
+    <!-- optional for html/content dumps -->
+    <var name="DUMP_DIR" value="/Users/example/tests-dump" />
+    
 
     <includePath>.</includePath>
   </php>
