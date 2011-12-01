@@ -1672,6 +1672,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     $pass = $this->assertField('name', t('Username field found.'), t('Logout'));
     $pass = $pass && $this->assertField('pass', t('Password field found.'), t('Logout'));
 
+    // [bb] $pass here is forced to TRUE, but really phpunit doesn't return TRUE on success, so this runs either way:
     if ($pass) {
       $this->loggedInUser = FALSE;
     }
