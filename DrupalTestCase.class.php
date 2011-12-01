@@ -206,6 +206,22 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   }
   
 
+  // legacy supports
+
+  function assertEqual($expected, $actual, $message = '') {
+    return $this->assertEquals($expected, $actual, $message);
+  }
+
+  function assertNotEqual($expected, $actual, $message = '') {
+    return $this->assertNotEquals($expected, $actual, $message);
+  }
+
+  function assertIdentical($first, $second, $message = '', $group = 'Other') {
+    return $this->assertSame($first, $second, $message);
+  }
+
+
+
   /**
    * Pass if the internal browser's URL matches the given path.
    *
