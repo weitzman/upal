@@ -1241,7 +1241,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   /**
    * Initializes the cURL connection.
    *
-   * If the simpletest_httpauth_credentials variable is set, this function will
+   * If the UPAL_HTTP_USER and UPAL_HTTP_PASS config vars are set, this function will
    * add HTTP authentication headers. This is necessary for testing sites that
    * are protected by login credentials from public access.
    * See the description of $curl_options for other options.
@@ -1261,10 +1261,16 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
         CURLOPT_HEADERFUNCTION => array(&$this, 'curlHeaderCallback'),
         CURLOPT_USERAGENT => 'Upal',
       );
-      if (isset($this->httpauth_credentials)) {
+
+      // http credentials optionally in phpunit.xml
+      if (isset($GLOBALS['UPAL_HTTP_USER']) && isset($GLOBALS['UPAL_HTTP_PASS']) && !empty($GLOBALS['UPAL_HTTP_USER']) && !empty($GLOBALS['UPAL_HTTP_PASS'])) {
+        $this->httpauth_credentials = $GLOBALS['UPAL_HTTP_USER'] . ':' . $GLOBALS['UPAL_HTTP_PASS'];
+
         $curl_options[CURLOPT_HTTPAUTH] = $this->httpauth_method;
         $curl_options[CURLOPT_USERPWD] = $this->httpauth_credentials;
       }
+
+
       curl_setopt_array($this->curlHandle, $this->additionalCurlOptions + $curl_options);
 
       // By default, the child session name should be the same as the parent.
@@ -2471,7 +2477,11 @@ function upal_init() {
   define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal'));
 
 
-  // Set the env vars that Derupal expects. Largely copied from drush.
+  // http credentials (optional)
+  $GLOBALS['UPAL_HTTP_USER'] = getenv('UPAL_HTTP_USER') ? getenv('UPAL_HTTP_USER') : (isset($GLOBALS['UPAL_HTTP_USER']) ? $GLOBALS['UPAL_HTTP_USER'] : NULL);
+  $GLOBALS['UPAL_HTTP_PASS'] = getenv('UPAL_HTTP_PASS') ? getenv('UPAL_HTTP_PASS') : (isset($GLOBALS['UPAL_HTTP_PASS']) ? $GLOBALS['UPAL_HTTP_PASS'] : NULL);
+
+  // Set the env vars that Drupal expects. Largely copied from drush.
   $url = parse_url(UPAL_WEB_URL);
 
   if (array_key_exists('path', $url)) {
