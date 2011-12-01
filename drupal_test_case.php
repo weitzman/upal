@@ -14,7 +14,6 @@
  *       as well.
  *     - Unlikely: Instead of DB restore, clone as per http://drupal.org/node/666956.
  *     - error() could log $caller info.
- *     - Fix verbose().
  *     - Fix random test failures.
  *     - Split into separate class files and add autoloader for upal.
  *     - Compare speed versus simpletest.
@@ -155,7 +154,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   /**
    * for verbose output
    */
-  protected $printer;
+  protected static $printer;
 
 
   public function run(PHPUnit_Framework_TestResult $result = NULL) {
@@ -1104,11 +1103,11 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   }
 
 
-  public function verbose($message, $cutoff = 500) {
+  public static function verbose($message, $cutoff = 500) {
 
     // init printer on first time
-    if (! $this->printer instanceof PHPUnit_TextUI_ResultPrinter) {
-      $this->printer = new PHPUnit_TextUI_ResultPrinter('php://stdout', TRUE, TRUE, TRUE);   // can change to stderr
+    if (! self::$printer instanceof PHPUnit_TextUI_ResultPrinter) {
+      self::$printer = new PHPUnit_TextUI_ResultPrinter('php://stdout', TRUE, TRUE, TRUE);   // can change to stderr
       //echo "SET UP PRINTER!!!\n";  // (this works too, but not as good...?)
     }
 
@@ -1120,14 +1119,14 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     //$this->log($message, 'verbose');      // this doesn't do anything
     //echo "[verbose] " . $message . "\n";  // this works but is crude
 
-    $this->printer->write($message . "\n\n");  // seems to be a more native approach
+    self::$printer->write($message . "\n\n");  // seems to be a more native approach
   }
 
   /**
    * output objects
    */
   public function debug($obj, $heading = '') {
-   $this->verbose( (empty($heading) ? '' : "* {$heading}:\n") . print_r($obj,TRUE), NULL );
+   self::verbose( (empty($heading) ? '' : "* {$heading}:\n") . print_r($obj,TRUE), NULL );
   }
 
 
