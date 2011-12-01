@@ -1121,7 +1121,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     //$this->log($message, 'verbose');      // this doesn't do anything
     //echo "[verbose] " . $message . "\n";  // this works but is crude
 
-    self::$printer->write($message . "\n\n");  // seems to be a more native approach
+    self::$printer->write("\n" . $message . "\n");  // seems to be a more native approach
   }
 
   /**
