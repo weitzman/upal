@@ -199,6 +199,12 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   function assertIdentical($first, $second, $message = '', $group = 'Other') {
     return $this->assertSame($first, $second, $message);
   }
+  
+  public static function assertTrue($condition, $message = '') {
+    parent::assertTrue($condition, $message = '');
+    return TRUE;  // needed for simpletest back-comp (e.g. in drupalLogin), but dumb / always true.
+  }
+  
 
   /**
    * Pass if the internal browser's URL matches the given path.
