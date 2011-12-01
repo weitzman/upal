@@ -201,7 +201,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   }
   
   public static function assertTrue($condition, $message = '') {
-    parent::assertTrue($condition, $message = '');
+    parent::assertTrue($condition, $message);
     return TRUE;  // needed for simpletest back-comp (e.g. in drupalLogin), but dumb / always true.
   }
   
