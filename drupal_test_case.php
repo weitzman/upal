@@ -151,6 +151,13 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    */
   protected $redirect_count;
 
+
+  /**
+   * for verbose output
+   */
+  protected $printer;
+
+
   public function run(PHPUnit_Framework_TestResult $result = NULL) {
     $this->setPreserveGlobalState(FALSE);
     return parent::run($result);
@@ -1096,11 +1103,34 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     return $all_permutations;
   }
 
-  function verbose($message) {
-    if (strlen($message) < 500) {
-      // $this->log($message, 'verbose');
+
+  public function verbose($message, $cutoff = 500) {
+
+    // init printer on first time
+    if (! $this->printer instanceof PHPUnit_TextUI_ResultPrinter) {
+      $this->printer = new PHPUnit_TextUI_ResultPrinter('php://stdout', TRUE, TRUE, TRUE);   // can change to stderr
+      //echo "SET UP PRINTER!!!\n";  // (this works too, but not as good...?)
     }
+
+    // default limit to arbitrary length
+    if (is_int($cutoff) && strlen($message) > $cutoff) {
+      $message = truncate_utf8($message, $cutoff, FALSE, TRUE);
+    }
+
+    //$this->log($message, 'verbose');      // this doesn't do anything
+    //echo "[verbose] " . $message . "\n";  // this works but is crude
+
+    $this->printer->write($message . "\n\n");  // seems to be a more native approach
   }
+
+  /**
+   * output objects
+   */
+  public function debug($obj, $heading = '') {
+   $this->verbose( (empty($heading) ? '' : "* {$heading}:\n") . print_r($obj,TRUE), NULL );
+  }
+
+
 
   /**
    * Create a user with a given set of permissions. The permissions correspond to the
@@ -2319,6 +2349,8 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
 
 class DrupalUnitTestCase extends DrupalTestCase {
   function setUp() {
+    $this->verbose("Setting up " . get_class($this));
+
     parent::setUp();
 
     if (!defined('DRUPAL_ROOT')) {
@@ -2331,6 +2363,8 @@ class DrupalUnitTestCase extends DrupalTestCase {
 
 class DrupalWebTestCase extends DrupalTestCase {
   public function setUp() {
+    $this->verbose("Setting up " . get_class($this));
+
     parent::setUp();
 
     if (!defined('DRUPAL_ROOT')) {
