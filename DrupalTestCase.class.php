@@ -1,27 +1,6 @@
 <?php
 
 /*
- * @file
- *   Test Framework for Drupal based on PHPUnit.
- *
- *   @todo
- *     - Simpletest's assertFalse casts to boolean whereas PHPUnit requires boolean. See testSiteWideContact().
- *     - hard coded TRUE at end of drupalLogin() because PHPUnit doesn't return
- *       anything from an assertion (unlike simpletest). Even if we fix drupalLogin(),
- *       we have to fix this to get 100% compatibility with simpletest.
- *     - setUp() only resets DB for mysql. Probably should use Drush and thus
- *       support postgres and sqlite easily. That buys us auto creation of upal DB
- *       as well.
- *     - Unlikely: Instead of DB restore, clone as per http://drupal.org/node/666956.
- *     - error() could log $caller info.
- *     - Fix verbose().
- *     - Fix random test failures.
- *     - Split into separate class files and add autoloader for upal.
- *     - Compare speed versus simpletest.
- *     - move upal_init() to a class thats called early in the suite.
- */
-
-/*
  * @todo: Perhaps move these annotations down to the instance classes and tests.
  *
  * @runTestsInSeparateProcess
@@ -150,6 +129,19 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    * The number of redirects followed during the handling of a request.
    */
   protected $redirect_count;
+  
+  
+  /**
+   * stuff to clean up on tearDown()
+   */
+  protected $cleanup = array();
+
+
+  /**
+   * for verbose output
+   */
+  protected static $printer;
+
 
   public function run(PHPUnit_Framework_TestResult $result = NULL) {
     $this->setPreserveGlobalState(FALSE);
@@ -206,13 +198,26 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     return $this->fail('exception: ' . $message, $group);
   }
 
-  function assertEqual($expected, $actual, $msg = NULL) {
-    return $this->assertEquals($expected, $actual);
+  // legacy supports
+
+  public static function assertTrue($condition, $message = '') {
+    parent::assertTrue($condition, $message);
+    return TRUE;  // needed for simpletest back-comp (e.g. in drupalLogin), but dumb / always true.
+  }
+
+  function assertEqual($expected, $actual, $message = '') {
+    return $this->assertEquals($expected, $actual, $message);
+  }
+
+  function assertNotEqual($expected, $actual, $message = '') {
+    return $this->assertNotEquals($expected, $actual, $message);
   }
 
   function assertIdentical($first, $second, $message = '', $group = 'Other') {
     return $this->assertSame($first, $second, $message);
   }
+
+
 
   /**
    * Pass if the internal browser's URL matches the given path.
@@ -517,7 +522,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
 
     // If value specified then check array for match.
     $found = TRUE;
-    if (isset($value)) {
+    if (!empty($value)) {
       $found = FALSE;
       if ($fields) {
         foreach ($fields as $field) {
@@ -653,7 +658,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    * @return
    *   TRUE on pass, FALSE on fail.
    */
-  protected function assertFieldById($id, $value = '', $message = '') {
+  protected function assertFieldById($id, $value = NULL, $message = '') {
     return $this->assertFieldByXPath($this->constructFieldXpath('id', $id), $value, $message ? $message : t('Found field by id @id', array('@id' => $id)), t('Browser'));
   }
 
@@ -1096,11 +1101,34 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     return $all_permutations;
   }
 
-  function verbose($message) {
-    if (strlen($message) < 500) {
-      // $this->log($message, 'verbose');
+
+  public static function verbose($message, $cutoff = 500) {
+
+    // init printer on first time
+    if (! self::$printer instanceof PHPUnit_TextUI_ResultPrinter) {
+      self::$printer = new PHPUnit_TextUI_ResultPrinter('php://stdout', TRUE, TRUE, TRUE);   // can change to stderr
+      //echo "SET UP PRINTER!!!\n";  // (this works too, but not as good...?)
     }
+
+    // default limit to arbitrary length
+    if (is_int($cutoff) && strlen($message) > $cutoff) {
+      $message = truncate_utf8($message, $cutoff, FALSE, TRUE);
+    }
+
+    //$this->log($message, 'verbose');      // this doesn't do anything
+    //echo "[verbose] " . $message . "\n";  // this works but is crude
+
+    self::$printer->write("\n" . $message . "\n");  // seems to be a more native approach
   }
+
+  /**
+   * output objects
+   */
+  public function debug($obj, $heading = '') {
+   self::verbose( (empty($heading) ? '' : "* {$heading}:\n") . print_r($obj,TRUE), NULL );
+  }
+
+
 
   /**
    * Create a user with a given set of permissions. The permissions correspond to the
@@ -1108,6 +1136,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    *
    * @param $permissions
    *   Array of permission names to assign to user.
+   * @param $cleanup if TRUE, gets deleted in tearDown()
    * @return
    *   A fully loaded user object with pass_raw property, or FALSE if account
    *   creation fails.
@@ -1131,6 +1160,11 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     $this->assertTrue(!empty($account->uid), t('User created with name %name and pass %pass', array('%name' => $edit['name'], '%pass' => $edit['pass'])), t('User login'));
     if (empty($account->uid)) {
       return FALSE;
+    }
+    
+    // mark for cleanup on tearDown()
+    if ($cleanup) {
+      $this->cleanup['users'][] = $account->uid;
     }
 
     // Add the raw password so that we can log in as this user.
@@ -1211,7 +1245,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
   /**
    * Initializes the cURL connection.
    *
-   * If the simpletest_httpauth_credentials variable is set, this function will
+   * If the UPAL_HTTP_USER and UPAL_HTTP_PASS config vars are set, this function will
    * add HTTP authentication headers. This is necessary for testing sites that
    * are protected by login credentials from public access.
    * See the description of $curl_options for other options.
@@ -1231,10 +1265,16 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
         CURLOPT_HEADERFUNCTION => array(&$this, 'curlHeaderCallback'),
         CURLOPT_USERAGENT => 'Upal',
       );
-      if (isset($this->httpauth_credentials)) {
+
+      // http credentials optionally in phpunit.xml
+      if (isset($GLOBALS['UPAL_HTTP_USER']) && isset($GLOBALS['UPAL_HTTP_PASS']) && !empty($GLOBALS['UPAL_HTTP_USER']) && !empty($GLOBALS['UPAL_HTTP_PASS'])) {
+        $this->httpauth_credentials = $GLOBALS['UPAL_HTTP_USER'] . ':' . $GLOBALS['UPAL_HTTP_PASS'];
+
         $curl_options[CURLOPT_HTTPAUTH] = $this->httpauth_method;
         $curl_options[CURLOPT_USERPWD] = $this->httpauth_credentials;
       }
+
+
       curl_setopt_array($this->curlHandle, $this->additionalCurlOptions + $curl_options);
 
       // By default, the child session name should be the same as the parent.
@@ -1651,6 +1691,7 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     $pass = $this->assertField('name', t('Username field found.'), t('Logout'));
     $pass = $pass && $this->assertField('pass', t('Password field found.'), t('Logout'));
 
+    // [bb] $pass here is forced to TRUE, but really phpunit doesn't return TRUE on success, so this runs either way:
     if ($pass) {
       $this->loggedInUser = FALSE;
     }
@@ -1662,10 +1703,11 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    * @param $settings
    *   An associative array of settings to change from the defaults, keys are
    *   node properties, for example 'title' => 'Hello, world!'.
+   * @param $cleanup if TRUE, gets deleted in tearDown()
    * @return
    *   Created node object.
    */
-  protected function drupalCreateNode($settings = array()) {
+  protected function drupalCreateNode($settings = array(), $cleanup = TRUE) {
     // Populate defaults array.
     $settings += array(
       'body'      => array(LANGUAGE_NONE => array(array())),
@@ -1709,6 +1751,11 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
 
     $node = (object) $settings;
     node_save($node);
+    
+    // mark for cleanup on tearDown()
+    if ($cleanup) {
+      $this->cleanup['nodes'][] = $node->nid;
+    }
 
     // Small hack to link revisions to our test user.
     db_update('node_revision')
@@ -1717,6 +1764,19 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
       ->execute();
     return $node;
   }
+  
+  
+  /**
+   * [added] wrapper around variable_set, saves original value for restore on tearDown.
+   */
+  function drupalVariableSet($key, $value, $cleanup = TRUE) {
+    if ($cleanup) {
+      $this->cleanup['variables'][$key] = variable_get($key, 0);
+    }
+    
+    variable_set($key, $value);
+  }
+  
 
   /**
    * Creates a custom content type based on default settings.
@@ -2315,10 +2375,102 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     $this->drupalSettings = $settings;
   }
 
- }
+
+
+  /**
+   * crude mechanism to dump current CURL'd html to file system
+   * dir set in phpunit.xml as DUMP_DIR. 
+   * [tried and removed: create subdir for this test run and file for each dump]
+   *
+   * @param $description optional description of file dump for the logs
+   */
+  public function dumpContentToFile($description = '') {
+    $dump_dir = isset($GLOBALS['DUMP_DIR']) ? $GLOBALS['DUMP_DIR'] : NULL;
+    if (empty($dump_dir) || !file_exists($dump_dir)) {
+      $this->error("Missing or invalid DUMP_DIR in " . __FUNCTION__);
+      return;
+    }
+
+
+    // tried per-run subdir, but dropped; should be handled separately in jenkins/bash
+    //static $run_ts = NULL;
+    //  if (! $run_ts) $run_ts = date('Y-m-d_H:m:s');
+
+    //$dump_dir .= '/' . $run_ts;
+    //if (! file_exists($dump_dir)) {
+    //  $made = mkdir($dump_dir);
+    //  if (! $made) {
+    //    $this->error("Unable to create dump subdir $dump_dir");
+    //    return;
+    //  }
+    //}
+
+    $filename = $this->getUrl();
+    $filename = str_replace('/', '-', $filename);
+    $filename = str_replace(':', '', $filename);
+    $filename = str_replace('.', '_', $filename);
+
+    // add counter to identify order and prevent dups/overrides of same URL
+    static $count = 0;
+    $filename = (++$count) . '-' . $filename . '.html';
+
+    $filepath = realpath($dump_dir) . '/' . $filename;
+    
+    //$this->verbose(sprintf("Dumping content to %s", $filepath));
+
+    $put = file_put_contents($filepath, $this->drupalGetContent());
+    if ($put === FALSE) $this->error("Unable to dump content to $filepath.");
+    else $this->verbose("Dumped content of " . $this->getUrl() . " to $filepath." . (empty($description) ? '' : " ($description)") );
+  }
+
+
+  /**
+   * tear down after tests: added for cleanup.
+   */
+  function tearDown() {
+    
+    // nodes
+    if (is_array($this->cleanup['nodes'])) {
+      foreach($this->cleanup['nodes'] as $nid) {
+        if (is_numeric($nid)) {
+          $this->verbose("Cleanup: deleting node [{$nid}]");
+          node_delete($nid);
+        }
+      }
+    }
+    
+    // users
+    if (is_array($this->cleanup['users'])) {
+      foreach($this->cleanup['users'] as $uid) {
+        if (is_numeric($uid)) {
+          $this->verbose("Cleanup: deleting user [{$uid}]");
+          user_delete(array(), $uid);          
+        }
+      }
+    }
+    
+    // [restore] variables
+    if (is_array($this->cleanup['variables'])) {
+      foreach($this->cleanup['variables'] as $key => $value) {
+        $this->verbose("Cleanup: restoring variable [{$key}]");
+        variable_set($key, $value);
+      }
+    }
+    
+    // @todo apply this $cleanup logic to other created stuff.
+    
+    parent::tearDown();
+  }
+
+
+
+} // abstract class DrupalTestCase
+
 
 class DrupalUnitTestCase extends DrupalTestCase {
   function setUp() {
+    $this->verbose("Setting up " . get_class($this));
+
     parent::setUp();
 
     if (!defined('DRUPAL_ROOT')) {
@@ -2331,6 +2483,8 @@ class DrupalUnitTestCase extends DrupalTestCase {
 
 class DrupalWebTestCase extends DrupalTestCase {
   public function setUp() {
+    $this->verbose("Setting up " . get_class($this));
+
     parent::setUp();
 
     if (!defined('DRUPAL_ROOT')) {
@@ -2409,55 +2563,3 @@ class DrupalWebTestCase extends DrupalTestCase {
 
   }
 }
-
-/*
- * Initialize our environment at the start of each run (i.e. suite).
- */
-function upal_init() {
-  // UNISH_DRUSH value can come from phpunit.xml or `which drush`.
-  if (!defined('UNISH_DRUSH')) {
-    // Let the UNISH_DRUSH environment variable override if set.
-    $unish_drush = isset($_SERVER['UNISH_DRUSH']) ? $_SERVER['UNISH_DRUSH'] : NULL;
-    $unish_drush = isset($GLOBALS['UNISH_DRUSH']) ? $GLOBALS['UNISH_DRUSH'] : $unish_drush;
-    if (empty($unish_drush)) {
-      // $unish_drush = Drush_TestCase::is_windows() ? exec('for %i in (drush) do @echo.   %~$PATH:i') : trim(`which drush`);
-      $unish_drush = trim(`which drush`);
-    }
-    define('UNISH_DRUSH', $unish_drush);
-  }
-
-  // We read from globals here because env can be empty and ini did not work in quick test.
-  define('UPAL_DB_URL', getenv('UPAL_DB_URL') ? getenv('UPAL_DB_URL') : (!empty($GLOBALS['UPAL_DB_URL']) ? $GLOBALS['UPAL_DB_URL'] : 'mysql://root:@127.0.0.1/upal'));
-
-  // Make sure we use the right Drupal codebase.
-  define('UPAL_ROOT', getenv('UPAL_ROOT') ? getenv('UPAL_ROOT') : (isset($GLOBALS['UPAL_ROOT']) ? $GLOBALS['UPAL_ROOT'] : realpath('.')));
-  chdir(UPAL_ROOT);
-
-  // The URL that browser based tests (ewwwww) should use.
-  define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal'));
-
-
-  // Set the env vars that Derupal expects. Largely copied from drush.
-  $url = parse_url(UPAL_WEB_URL);
-
-  if (array_key_exists('path', $url)) {
-    $_SERVER['PHP_SELF'] = $url['path'] . '/index.php';
-  }
-  else {
-    $_SERVER['PHP_SELF'] = '/index.php';
-  }
-
-  $_SERVER['REQUEST_URI'] = $_SERVER['SCRIPT_NAME'] = $_SERVER['PHP_SELF'];
-  $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
-  $_SERVER['REQUEST_METHOD']  = NULL;
-
-  $_SERVER['SERVER_SOFTWARE'] = NULL;
-  $_SERVER['HTTP_USER_AGENT'] = NULL;
-
-  $_SERVER['HTTP_HOST'] = $url['host'];
-  $_SERVER['SERVER_PORT'] = array_key_exists('port', $url) ? $url['port'] : NULL;
-}
-
- // This code is in global scope.
- // TODO: I would rather this code at top of file, but I get Fatal error: Class 'Drush_TestCase' not found
- upal_init();
