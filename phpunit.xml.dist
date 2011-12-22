@@ -17,6 +17,10 @@
     <!--Hard code a fileystem path to the to-be-tested Drupal. Defaults to cwd.-->
     <!--<var name="UPAL_ROOT" value="/Users/mw/htd/drupal"/>-->
 
+    <!--User must have write permissions to this directory.-->
+    <!--If not supplied, defaults to sys_get_tmp_dir().-->
+    <!-- <var name="UPAL_TMP" value="/tmp"/> -->
+
     <!--Uncomment the line below if your path to drush differs from `which drush`. Use absolute path.-->
     <!--You currently need 'master' branch of drush after 2011.07.21. Drush 4.6 will be OK - http://drupal.org/node/1105514-->
     <!--<var name="UNISH_DRUSH" value="/Users/mw/bin/drush"/>-->

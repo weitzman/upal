@@ -2315,6 +2315,49 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
     $this->drupalSettings = $settings;
   }
 
+
+  /*
+  *Print a log message to the console.
+  *
+  * @param string $message
+  * @param string $type
+  *   Supported types are:
+  *     - notice
+  *     - verbose
+  *     - debug
+  */
+  function log($message, $type = 'notice') {
+    $line = "\nLog: $message\n";
+    switch ($this->log_level()) {
+      case 'verbose':
+        if (in_array($type, array('notice', 'verbose'))) print $line;
+        break;
+      case 'debug':
+        print $line;
+        break;
+      default:
+        if ($type == 'notice') print $line;
+        break;
+    }
+  }
+
+  function log_level() {
+    if (in_array('--debug', $_SERVER['argv'])) {
+      return 'debug';
+    }
+    elseif (in_array('--verbose', $_SERVER['argv'])) {
+      return 'verbose';
+    }
+  }
+
+  function directory_cache($subdir = '') {
+    return getenv('CACHE_PREFIX') . '/' . $subdir;
+  }
+
+//  function db_url($env) {
+//    return substr(UPAL_DB_URL, 0, 6) == 'sqlite'  ?  "sqlite://sites/$env/files/unish.sqlite" : UPAL_DB_URL . '/unish_' . $env;
+//  }
+
  }
 
 class DrupalUnitTestCase extends DrupalTestCase {
@@ -2324,7 +2367,7 @@ class DrupalUnitTestCase extends DrupalTestCase {
     if (!defined('DRUPAL_ROOT')) {
       define('DRUPAL_ROOT', UPAL_ROOT);
     }
-    require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
   }
 }
@@ -2343,41 +2386,17 @@ class DrupalWebTestCase extends DrupalTestCase {
     if (file_exists($files_dir)) {
       exec('rm -rf ' . escapeshellarg($files_dir), $output, $return);
     }
-    mkdir("$site/files", 0777, TRUE);
+    else {
+      mkdir("$site/files", 0777, TRUE);
+    }
     // For some reason I need a chmod() as well.
     chmod("$site/files", 0777);
 
     $db = parse_url(UPAL_DB_URL);
 
-    // Restore virgin DB.
-    /* @todo
-      -- need more flexible dump to start with.
-      -- pull in UNISH class for calling `drush`
-    */
-    $cmd = sprintf('%s --db-url=%s --uri=upal eval "drush_sql_empty_db();"', UNISH_DRUSH, UPAL_DB_URL);
-    if (exec($cmd, $output, $return)) {
-      exit('Failed to empty DB.');
-    }
-
-    // Restore virgin DB. Will do in Drush once we get http://drupal.org/node/1226260.
-    // TODO: replace with drush sql_query.
-    if (isset($db['user'])) {
-      $parts[] = '-u' . $db['user'];
-    }
-    if (isset($db['pass'])) {
-      $parts[] = '-p' . $db['pass'];
-    }
-    $parts[] = '-h' . $db['host'];
-    if (isset($db['port'])) {
-      $parts[] = '-P' . $db['port'];
-    }
-    $parts[] = '-D' . trim($db['path'], '/');
-    $cmd = 'mysql '. implode(' ', $parts) . ' < ' . dirname(__FILE__) . '/drupal-7.4-standard.sql';
-    exec($cmd, $output, $return);
-
-    $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
-    // Write settings.php if needed. @todo perhaps Drush can do this better.
-    if (!file_exists("$site/settings.php")) {
+    // Overwrite settings.php every time, since DB credentials can change.
+    if (is_writable("$site/settings.php")) {
+      $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
       $db_array = array(
         'driver' => $db['scheme'],
         'database' => trim($db['path'], '/'),
@@ -2392,7 +2411,31 @@ class DrupalWebTestCase extends DrupalTestCase {
       file_put_contents("$site/settings.php", $data);
     }
 
-    require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    $source = $this->directory_cache('db_dumps') . '/' . $this->profile . '.sql';
+    if (file_exists($source)) {
+      $this->log('Cache HIT. Profile: ' . $source, 'verbose');
+
+      // Assure that we start with an empty database. Will create one if needed.
+      $cmd = sprintf('%s --db-url=%s --uri=upal --root=%s eval "drush_sql_empty_db();"', UNISH_DRUSH, UPAL_DB_URL, UPAL_ROOT);
+      if (exec($cmd, $output, $return)) {
+        exit('Failed to empty DB.');
+      }
+
+      // Import cached DB dump.
+      $cmd = sprintf('`%s sql-connect` < %s', UNISH_DRUSH, $source);
+      if (exec($cmd, $output, $return)) {
+        exit('Failed to empty DB.');
+      }
+    }
+    else {
+      $this->log('Cache MISS. Profile: ' . $source, 'verbose');
+      $cmd = sprintf('%s site-install -d --yes --uri=upal --sites-subdir=upal --root=%s %s', UNISH_DRUSH, UPAL_ROOT, $this->profile);
+      die($cmd);
+      if (exec($cmd, $output, $return)) {
+        exit('Failed to empty DB.');
+      }
+    }
+    require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
     // Enable modules for this test.
@@ -2406,7 +2449,6 @@ class DrupalWebTestCase extends DrupalTestCase {
 
     // Use the test mail class instead of the default mail handler class.
     variable_set('mail_system', array('default-system' => 'TestingMailSystem'));
-
   }
 }
 
@@ -2433,11 +2475,17 @@ function upal_init() {
   define('UPAL_ROOT', getenv('UPAL_ROOT') ? getenv('UPAL_ROOT') : (isset($GLOBALS['UPAL_ROOT']) ? $GLOBALS['UPAL_ROOT'] : realpath('.')));
   chdir(UPAL_ROOT);
 
-  // The URL that browser based tests (ewwwww) should use.
+  // The URL that browser based tests should use.
   define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal'));
 
+  define('UPAL_TMP', getenv('UPAL_TMP') ? getenv('UPAL_TMP') : (isset($GLOBALS['UPAL_TMP']) ? $GLOBALS['UPAL_TMP'] : sys_get_temp_dir()));
+  // define('UNISH_SANDBOX', UNISH_TMP . '/drush-sandbox');
 
-  // Set the env vars that Derupal expects. Largely copied from drush.
+  // Cache dir lives outside the sandbox so that we get persistence across classes.
+  $cache = UPAL_TMP . '/upal-cache';
+  putenv("CACHE_PREFIX=" . $cache);
+
+  // Set the env vars that Drupal expects. Largely copied from drush.
   $url = parse_url(UPAL_WEB_URL);
 
   if (array_key_exists('path', $url)) {
