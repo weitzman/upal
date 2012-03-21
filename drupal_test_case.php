@@ -2412,8 +2412,13 @@ class DrupalWebTestCase extends DrupalTestCase {
 
     $db = parse_url(UPAL_DB_URL);
 
+    // Attempt to make settings.php writable.
+    if (file_exists("$site/settings.php") && !is_writable("$site/settings.php")) {
+      chmod("$site/settings.php", 0666);
+    }
+
     // Overwrite settings.php every time, since DB credentials can change.
-    if (is_writable("$site/settings.php")) {
+    if (!file_exists("$site/settings.php") || is_writable("$site/settings.php")) {
       $byline = '// Written by the Upal Test Framework. See DrupalWebTestCase::setUp().';
       $db_array = array(
         'driver' => $db['scheme'],
