@@ -2302,7 +2302,17 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    */
   protected function refreshVariables() {
     global $conf;
-    cache('bootstrap')->delete('variables');
+    if (!defined('DRUPAL_CORE_VERSION')) {
+    	define('DRUPAL_CORE_VERSION', "8");
+    }   
+
+
+    if (DRUPAL_CORE_VERSION == "7") {
+	cache_clear_all('variables', 'cache_bootstrap');
+    }
+    else {
+	cache('bootstrap')->delete('variables');
+    }
     $conf = variable_initialize();
   }
 
@@ -2498,8 +2508,16 @@ class DrupalWebTestCase extends DrupalTestCase {
     //$_SERVER['REQUEST_METHOD']  = NULL;
     //$_SERVER['SERVER_SOFTWARE'] = NULL;
     //$_SERVER['HTTP_USER_AGENT'] = NULL;
+    if (!defined('DRUPAL_CORE_VERSION')) {
+	define('DRUPAL_CORE_VERSION', "8");
+    }
 
-    require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+    if (DRUPAL_CORE_VERSION == "7") {
+	require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    }
+    else {
+	require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    }
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
     // Enable modules for this test.
