@@ -1,3 +1,5 @@
+*Update: Drupal 8 now uses PHPUnit for its unit tests. It still uses simpletest for its system tests. Upal's purpose as a showcase and proof of concept has been fulfilled and no further work is expected.*
+
 Drupal's test suite based on PHPUnit (http://www.phpunit.de/).
 
 Usage
