@@ -25,6 +25,9 @@
     <!--You currently need 'master' branch of drush after 2011.07.21. Drush 4.6 will be OK - http://drupal.org/node/1105514-->
     <!--<var name="UNISH_DRUSH" value="/Users/mw/bin/drush"/>-->
 
+    <!-- Indicate your drupal core version. Defaults to Drupal 8. Not tested with D6 or older.-->
+    <!-- <var name="DRUPAL_CORE_VERSION" value="7" /> -->
+
     <includePath>.</includePath>
   </php>
 </phpunit>

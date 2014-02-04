@@ -2302,7 +2302,17 @@ abstract class DrupalTestCase extends PHPUnit_Framework_TestCase {
    */
   protected function refreshVariables() {
     global $conf;
-    cache('bootstrap')->delete('variables');
+    if (!defined('DRUPAL_CORE_VERSION')) {
+    	define('DRUPAL_CORE_VERSION', "8");
+    }   
+
+
+    if (DRUPAL_CORE_VERSION == "7") {
+	cache_clear_all('variables', 'cache_bootstrap');
+    }
+    else {
+	cache('bootstrap')->delete('variables');
+    }
     $conf = variable_initialize();
   }
 
@@ -2385,7 +2395,17 @@ class DrupalUnitTestCase extends DrupalTestCase {
     if (!defined('DRUPAL_ROOT')) {
       define('DRUPAL_ROOT', UPAL_ROOT);
     }
-    require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+    if (!defined("DRUPAL_CORE_VERSION")) {
+      define('DRUPAL_CORE_VERSION', "8");
+    }
+
+    if (DRUPAL_CORE_VERSION == "7") {
+    	require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    }
+    // Assume D8
+    else {
+    	require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+    }
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
   }
 }
@@ -2488,8 +2508,16 @@ class DrupalWebTestCase extends DrupalTestCase {
     //$_SERVER['REQUEST_METHOD']  = NULL;
     //$_SERVER['SERVER_SOFTWARE'] = NULL;
     //$_SERVER['HTTP_USER_AGENT'] = NULL;
+    if (!defined('DRUPAL_CORE_VERSION')) {
+	define('DRUPAL_CORE_VERSION', "8");
+    }
 
-    require_once DRUPAL_ROOT . '/core/includes/bootstrap.inc';
+    if (DRUPAL_CORE_VERSION == "7") {
+	require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    }
+    else {
+	require_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+    }
     drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
     // Enable modules for this test.
@@ -2531,6 +2559,8 @@ function upal_init() {
 
   // The URL that browser based tests should use.
   define('UPAL_WEB_URL', getenv('UPAL_WEB_URL') ? getenv('UPAL_WEB_URL') : (isset($GLOBALS['UPAL_WEB_URL']) ? $GLOBALS['UPAL_WEB_URL'] : 'http://upal'));
+
+  define('DRUPAL_CORE_VERSION', getenv('DRUPAL_CORE_VERSION') ? getenv('DRUPAL_CORE_VERSION') :(isset($GLOBALS['DRUPAL_CORE_VERSION']) ? $GLOBALS['DRUPAL_CORE_VERSION'] : "8"));
 
   define('UPAL_TMP', getenv('UPAL_TMP') ? getenv('UPAL_TMP') : (isset($GLOBALS['UPAL_TMP']) ? $GLOBALS['UPAL_TMP'] : sys_get_temp_dir()));
   // define('UNISH_SANDBOX', UNISH_TMP . '/drush-sandbox');
